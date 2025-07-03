@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ================================================== -->
+<!-- FRAGMENTO DE LA BARRA DE NAVEGACIÓN (NAVBAR)       -->
+<!-- th:fragment="navbar" le da un nombre a esta sección para que pueda ser llamada desde otras páginas. -->
+<!-- ================================================== -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm" th:fragment="navbar">
+    <div class="container">
+
+        <!-- Enlace del logo que apunta a la página de inicio -->
+        <a class="navbar-brand fw-bold" th:href="@{/}">
+            <i class="fas fa-couch me-2"></i>Creamuebles
+        </a>
+
+        <!-- Botón para menú en dispositivos móviles -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- Contenido del menú que se colapsa en móviles -->
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" aria-current="page" th:href="@{/}">Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/products}">Productos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Nosotros</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Contacto</a>
+                </li>
+            </ul>
+
+            <!-- Botón del carrito, separado a la derecha -->
+            <ul class="navbar-nav ms-lg-3">
+                <li class="nav-item">
+                    <a class="btn btn-outline-primary" th:href="@{/cart/view}">
+                        <i class="fas fa-shopping-cart me-1"></i> Carrito
+                        <!-- Este número se podrá actualizar dinámicamente más adelante -->
+                        <span class="badge bg-primary ms-1 rounded-pill">0</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+</body>
+</html>

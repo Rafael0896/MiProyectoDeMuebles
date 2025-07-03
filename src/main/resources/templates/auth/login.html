@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/header :: head('Iniciar Sesión')}"></head>
+
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+<header th:replace="~{fragments/header :: header}"></header>
+
+<main class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <h2 class="card-title text-center mb-4">Iniciar Sesión</h2>
+
+                    <!-- Mensajes de alerta -->
+                    <div th:if="${param.error}" class="alert alert-danger">Email o contraseña incorrectos.</div>
+                    <div th:if="${param.logout}" class="alert alert-success">Has cerrado sesión exitosamente.</div>
+                    <div th:if="${param.success}" class="alert alert-success">¡Registro exitoso! Por favor, inicia sesión.</div>
+
+                    <form th:action="@{/login}" method="post">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Email</label>
+                            <input type="email" id="username" name="username" class="form-control" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <input type="password" id="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>¿No tienes una cuenta? <a th:href="@{/register}">Regístrate aquí</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/footer :: footer}"></footer>
+
+</body>
+</html>
