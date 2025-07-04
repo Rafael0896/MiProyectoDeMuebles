@@ -1,13 +1,8 @@
 package edu.sena.creamuebles.config;
 
 import edu.sena.creamuebles.service.UserService;
-import org.springframework.web.servlet.LocaleResolver;
-import org.springframework.web.servlet.i18n.SessionLocaleResolver;
-import java.util.Locale;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -19,6 +14,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.LocaleResolver;
+import org.springframework.web.servlet.i18n.SessionLocaleResolver;
+
+import java.util.Arrays;
+import java.util.Locale;
 
 @Configuration
 @EnableWebSecurity
@@ -33,7 +36,7 @@ public class SecurityConfig {
     @Bean
     public LocaleResolver localeResolver() {
         SessionLocaleResolver slr = new SessionLocaleResolver();
-        slr.setDefaultLocale(new Locale("es", "MX")); // O "es", "CO" según tu país
+        slr.setDefaultLocale(new Locale("es", "CO")); // Ajustado a Colombia
         return slr;
     }
 
@@ -51,47 +54,54 @@ public class SecurityConfig {
     }
 
     @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173")); // Añade aquí la URL de tu frontend
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration); // Aplicar solo a rutas de la API
+        return source;
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider) throws Exception {
         http
-                // CSRF está habilitado por defecto en aplicaciones con estado, lo cual es bueno.
-                // .csrf(csrf -> csrf.disable()) // Podemos dejar que Spring lo maneje.
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // CSRF está habilitado por defecto, lo cual es correcto para vistas con Thymeleaf.
+                // Si en el futuro tu app es SOLO una API para React, deberías deshabilitarlo:
+                // .csrf(csrf -> csrf.disable())
 
-                // Definimos las reglas de autorización para cada endpoint
                 .authorizeHttpRequests(auth -> auth
-                        // === ENDPOINTS DE VISTAS Y RECURSOS PÚBLICOS ===
-                        .requestMatchers("/", "/home", "/register", "/products", "/products/**").permitAll()
+                        // === ENDPOINTS PÚBLICOS (VISTAS Y RECURSOS) ===
+                        .requestMatchers("/", "/home", "/register", "/login", "/products", "/products/**").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                        .requestMatchers("/cart/**").permitAll() // Permitir acceso al carrito
 
-                        .requestMatchers("/cart/**").permitAll()
                         // === ENDPOINTS DE API PÚBLICOS ===
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/banners/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**", "/api/v1/categories/**", "/api/v1/banners/**").permitAll()
 
                         // === CUALQUIER OTRA PETICIÓN REQUIERE AUTENTICACIÓN ===
                         .anyRequest().authenticated()
                 )
 
-                // === CONFIGURACIÓN DEL FORMULARIO DE LOGIN ===
                 .formLogin(form -> form
-                        .loginPage("/login") // URL de nuestra página de login personalizada
-                        .loginProcessingUrl("/login") // La URL que Spring Security vigilará para procesar el login
-                        .defaultSuccessUrl("/products", true) // A dónde redirigir tras un login exitoso
-                        .permitAll() // Permitir a todos acceder a la página de login
-                )
-
-                // === CONFIGURACIÓN DEL LOGOUT ===
-                .logout(logout -> logout
-                        .logoutUrl("/logout") // URL para activar el logout
-                        .logoutSuccessUrl("/login?logout") // A dónde ir tras cerrar sesión exitosamente
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
+                        .defaultSuccessUrl("/products", true)
                         .permitAll()
                 )
 
-                // Le decimos a Spring que use nuestro proveedor de autenticación personalizado.
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/login?logout")
+                        .permitAll()
+                )
+
                 .authenticationProvider(authenticationProvider);
 
         return http.build();
     }
-
 }
