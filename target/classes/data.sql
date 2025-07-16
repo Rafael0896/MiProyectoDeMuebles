@@ -28,12 +28,12 @@ INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, ty
 
 -- Banner 2: Una promoción que estuvo activa en el pasado (ya no debería aparecer).
 INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, type, start_date, end_date, sort_order, created_at) VALUES
-    ('¡Oferta de Invierno!', 'Hasta 30% de descuento en sofás seleccionados', 'https://d1csarkz8obe9u.cloudfront.net/posterpreviews/furniture-banner-template-design-a636dbc0cd8fcad1e4f5c65dc3746501_screen.jpg?ts=1609919679', '/category/1', 'Ir a Sofás', true, 'PROMOTION', '2023-07-01 00:00:00', '2023-07-31 23:59:59', 2, NOW());
+    ('¡Oferta de Invierno!', 'Hasta 30% de descuento en sofás seleccionados', 'https://bylmo.com/cdn/shop/files/BANNER-WEB_22.png?v=1751640795&width=1400', '/category/1', 'Ir a Sofás', true, 'PROMOTION', '2023-07-01 00:00:00', '2026-07-31 23:59:59', 2, NOW());
 
 -- Banner 3: Una promoción que está activa AHORA MISMO.
 INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, type, start_date, end_date, sort_order, created_at) VALUES
-    ('Nueva Colección de Mesas', 'Descubre los diseños que marcan tendencia', 'https://propiedades.com.co/wp-content/uploads/2022/05/Propiedades-Comedore-en-tendencia-Banner-Principal.webp', '/category/2', 'Ver Mesas', true, 'PROMOTION', '2024-05-01 00:00:00', '2024-06-30 23:59:59', 3, NOW());
+    ('Nueva Colección de Mesas', 'Descubre los diseños que marcan tendencia', 'https://propiedades.com.co/wp-content/uploads/2022/05/Propiedades-Comedore-en-tendencia-Banner-Principal.webp', '/category/2', 'Ver Mesas', true, 'PROMOTION', '2024-05-01 00:00:00', '2026-06-30 23:59:59', 3, NOW());
 
 -- Banner 4: Un banner que se activará en el futuro.
 INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, type, start_date, end_date, sort_order, created_at) VALUES
-    ('Próximamente: Black Friday', 'Prepárate para las mejores ofertas del año', 'https://img.freepik.com/vector-premium/diseno-banner-plantilla-tienda-electrodomesticos_958026-97.jpg', '/', 'Más Información', true, 'PROMOTION', '2024-11-20 00:00:00', '2024-11-29 23:59:59', 4, NOW());
+    ('Próximamente: Black Friday', 'Prepárate para las mejores ofertas del año', 'https://img.freepik.com/vector-premium/diseno-banner-plantilla-tienda-electrodomesticos_958026-97.jpg', '/', 'Más Información', true, 'PROMOTION', '2024-11-20 00:00:00', '2026-11-29 23:59:59', 4, NOW());
