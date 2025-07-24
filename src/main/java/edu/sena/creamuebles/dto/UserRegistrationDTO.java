@@ -19,5 +19,9 @@ public record UserRegistrationDTO(
 
         @NotBlank(message = "La contraseña es obligatoria")
         @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
-        String password
+        String password,
+
+        // Este es el campo que causa el error si la clase no es un record
+        @NotBlank(message = "El token de CAPTCHA es obligatorio")
+        String captchaToken
 ) {}

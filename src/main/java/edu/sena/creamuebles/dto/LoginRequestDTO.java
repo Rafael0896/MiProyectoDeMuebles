@@ -9,5 +9,8 @@ public record LoginRequestDTO(
         String email,
 
         @NotBlank(message = "La contraseña es obligatoria")
-        String password
+        String password,
+
+        @NotBlank(message = "El token de CAPTCHA es obligatorio")
+        String captchaToken
 ) {}

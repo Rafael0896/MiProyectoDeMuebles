@@ -5,10 +5,11 @@ import edu.sena.creamuebles.dto.LoginResponseDTO;
 import edu.sena.creamuebles.dto.UserRegistrationDTO;
 import edu.sena.creamuebles.dto.UserResponseDTO;
 import edu.sena.creamuebles.model.User;
-// <-- CAMBIO 1: Importar el JwtService
+import edu.sena.creamuebles.service.CaptchaService;
 import edu.sena.creamuebles.service.JwtService;
 import edu.sena.creamuebles.service.UserService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,24 +24,27 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
-    // <-- CAMBIO 2: Inyectar el servicio para generar tokens JWT
     private final JwtService jwtService;
-
-    public AuthController(UserService userService, AuthenticationManager authenticationManager, JwtService jwtService) {
-        this.userService = userService;
-        this.authenticationManager = authenticationManager;
-        this.jwtService = jwtService;
-    }
+    private final CaptchaService captchaService;
 
     /**
      * Endpoint para registrar un nuevo usuario.
      */
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDTO> registerUser(@Valid @RequestBody UserRegistrationDTO registrationDTO) {
+    public ResponseEntity<?> registerUser(@Valid @RequestBody UserRegistrationDTO registrationDTO) {
+        // 1. Validar el CAPTCHA primero
+        // --- CORRECCIÓN: Volvemos a la sintaxis de record ---
+        if (!captchaService.validateCaptcha(registrationDTO.captchaToken())) {
+            // Si el CAPTCHA es inválido, rechaza la petición.
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: CAPTCHA inválido.");
+        }
+
+        // 2. Si es válido, proceder con el registro.
         UserResponseDTO newUser = userService.registerNewUser(registrationDTO);
         return new ResponseEntity<>(newUser, HttpStatus.CREATED);
     }
@@ -49,27 +53,27 @@ public class AuthController {
      * Endpoint para autenticar un usuario y obtener un token.
      */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> loginUser(@Valid @RequestBody LoginRequestDTO loginRequest) {
-        // 1. Autenticar al usuario
+    public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequestDTO loginRequest) {
+        // 1. Validar el CAPTCHA primero
+        // --- CORRECCIÓN: Volvemos a la sintaxis de record ---
+        if (!captchaService.validateCaptcha(loginRequest.captchaToken())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: CAPTCHA inválido.");
+        }
+
+        // 2. Si es válido, proceder con la autenticación.
         Authentication authentication = authenticationManager.authenticate(
+                // --- CORRECCIÓN: También para email y password ---
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.email(),
                         loginRequest.password()
                 )
         );
 
-        // 2. Si la autenticación es exitosa, establecerla en el contexto de seguridad
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 3. Obtener los detalles del usuario autenticado
-        // Spring Security ahora usa UserDetails, así que lo obtenemos de ahí.
-        // El casting a tu clase User funcionará si tu UserDetailsService lo devuelve así.
         User userDetails = (User) authentication.getPrincipal();
-
-        // <-- CAMBIO 3: Generar un token JWT REAL usando el servicio
         String token = jwtService.generateToken(userDetails);
 
-        // 5. Crear el DTO de respuesta con el token y los datos del usuario
         UserResponseDTO userDTO = new UserResponseDTO(
                 userDetails.getId(),
                 userDetails.getFirstName(),

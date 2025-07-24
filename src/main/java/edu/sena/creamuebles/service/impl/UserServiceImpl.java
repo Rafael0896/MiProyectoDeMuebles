@@ -6,6 +6,7 @@ import edu.sena.creamuebles.dto.UserUpdateDTO;
 import edu.sena.creamuebles.model.User;
 import edu.sena.creamuebles.repository.UserRepository;
 import edu.sena.creamuebles.service.UserService;
+import lombok.RequiredArgsConstructor; // <-- MEJORA 1: Importar
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,15 +18,13 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor // <-- MEJORA 1: Lombok genera el constructor por nosotros
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    // El constructor manual ya no es necesario gracias a @RequiredArgsConstructor
 
     @Override
     @Transactional
@@ -38,13 +37,39 @@ public class UserServiceImpl implements UserService {
         newUser.setFirstName(registrationDTO.firstName());
         newUser.setLastName(registrationDTO.lastName());
         newUser.setEmail(registrationDTO.email());
-        // ¡Importante! Codificar la contraseña antes de guardarla
         newUser.setPassword(passwordEncoder.encode(registrationDTO.password()));
         newUser.setRole(User.Role.USER);
-        newUser.setEnabled(true);
+        // newUser.setEnabled(true); // Si tienes este campo, está bien dejarlo
 
         User savedUser = userRepository.save(newUser);
         return mapToResponseDTO(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public Optional<UserResponseDTO> updateUser(Long id, UserUpdateDTO updateDTO) {
+        return userRepository.findById(id)
+                .map(existingUser -> {
+                    // --- MEJORA 2: Validar que el nuevo email no esté en uso por OTRO usuario ---
+                    if (!existingUser.getEmail().equalsIgnoreCase(updateDTO.email())) {
+                        userRepository.findByEmailIgnoreCase(updateDTO.email()).ifPresent(otherUser -> {
+                            throw new IllegalStateException("El email '" + updateDTO.email() + "' ya está en uso por otro usuario.");
+                        });
+                        existingUser.setEmail(updateDTO.email());
+                    }
+
+                    existingUser.setFirstName(updateDTO.firstName());
+                    existingUser.setLastName(updateDTO.lastName());
+                    existingUser.setPhone(updateDTO.phone());
+                    existingUser.setAddress(updateDTO.address());
+
+                    // Solo un administrador debería poder cambiar el rol o el estado 'enabled'
+                    // existingUser.setRole(updateDTO.role());
+                    // existingUser.setEnabled(updateDTO.enabled());
+
+                    User updatedUser = userRepository.save(existingUser);
+                    return mapToResponseDTO(updatedUser);
+                });
     }
 
     @Override
@@ -52,6 +77,16 @@ public class UserServiceImpl implements UserService {
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmailIgnoreCase(email);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("No se encontró un usuario con el email: " + email));
+    }
+
+    // --- El resto de los métodos están muy bien y no necesitan cambios ---
 
     @Override
     @Transactional(readOnly = true)
@@ -69,23 +104,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public Optional<UserResponseDTO> updateUser(Long id, UserUpdateDTO updateDTO) {
-        return userRepository.findById(id)
-                .map(existingUser -> {
-                    existingUser.setFirstName(updateDTO.firstName());
-                    existingUser.setLastName(updateDTO.lastName());
-                    existingUser.setEmail(updateDTO.email());
-                    existingUser.setPhone(updateDTO.phone());
-                    existingUser.setAddress(updateDTO.address());
-                    existingUser.setRole(updateDTO.role());
-                    existingUser.setEnabled(updateDTO.enabled());
-                    User updatedUser = userRepository.save(existingUser);
-                    return mapToResponseDTO(updatedUser);
-                });
-    }
-
-    @Override
-    @Transactional
     public boolean deleteById(Long id) {
         if (userRepository.existsById(id)) {
             userRepository.deleteById(id);
@@ -94,16 +112,6 @@ public class UserServiceImpl implements UserService {
         return false;
     }
 
-    // --- Implementación de UserDetailsService ---
-    @Override
-    @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("No se encontró un usuario con el email: " + email));
-    }
-
-    // --- Método de Mapeo ---
     private UserResponseDTO mapToResponseDTO(User user) {
         return new UserResponseDTO(
                 user.getId(),
