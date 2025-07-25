@@ -6,7 +6,7 @@ import edu.sena.creamuebles.dto.UserUpdateDTO;
 import edu.sena.creamuebles.model.User;
 import edu.sena.creamuebles.repository.UserRepository;
 import edu.sena.creamuebles.service.UserService;
-import lombok.RequiredArgsConstructor; // <-- MEJORA 1: Importar
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,28 +18,32 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor // <-- MEJORA 1: Lombok genera el constructor por nosotros
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // El constructor manual ya no es necesario gracias a @RequiredArgsConstructor
-
     @Override
     @Transactional
     public UserResponseDTO registerNewUser(UserRegistrationDTO registrationDTO) {
+        // Esta validación para evitar emails duplicados es excelente.
         userRepository.findByEmailIgnoreCase(registrationDTO.email()).ifPresent(u -> {
             throw new IllegalStateException("El email ya está en uso: " + registrationDTO.email());
         });
 
-        User newUser = new User();
-        newUser.setFirstName(registrationDTO.firstName());
-        newUser.setLastName(registrationDTO.lastName());
-        newUser.setEmail(registrationDTO.email());
-        newUser.setPassword(passwordEncoder.encode(registrationDTO.password()));
-        newUser.setRole(User.Role.USER);
-        // newUser.setEnabled(true); // Si tienes este campo, está bien dejarlo
+        // --- CORRECCIÓN Y MEJORA: Usar el patrón Builder y añadir los campos faltantes ---
+        User newUser = User.builder()
+                .firstName(registrationDTO.firstName())
+                .lastName(registrationDTO.lastName())
+                .email(registrationDTO.email())
+                .documentType(registrationDTO.documentType())       // <-- CAMPO AÑADIDO
+                .documentNumber(registrationDTO.documentNumber())   // <-- CAMPO AÑADIDO
+                .phone(registrationDTO.phone())                     // <-- CAMPO AÑADIDO
+                .password(passwordEncoder.encode(registrationDTO.password()))
+                .role(User.Role.USER)
+                .enabled(true) // Es buena práctica ser explícito con el estado inicial
+                .build();
 
         User savedUser = userRepository.save(newUser);
         return mapToResponseDTO(savedUser);
@@ -50,22 +54,19 @@ public class UserServiceImpl implements UserService {
     public Optional<UserResponseDTO> updateUser(Long id, UserUpdateDTO updateDTO) {
         return userRepository.findById(id)
                 .map(existingUser -> {
-                    // --- MEJORA 2: Validar que el nuevo email no esté en uso por OTRO usuario ---
-                    if (!existingUser.getEmail().equalsIgnoreCase(updateDTO.email())) {
+                    // La validación para el email en la actualización está muy bien pensada.
+                    if (updateDTO.email() != null && !existingUser.getEmail().equalsIgnoreCase(updateDTO.email())) {
                         userRepository.findByEmailIgnoreCase(updateDTO.email()).ifPresent(otherUser -> {
                             throw new IllegalStateException("El email '" + updateDTO.email() + "' ya está en uso por otro usuario.");
                         });
                         existingUser.setEmail(updateDTO.email());
                     }
 
-                    existingUser.setFirstName(updateDTO.firstName());
-                    existingUser.setLastName(updateDTO.lastName());
-                    existingUser.setPhone(updateDTO.phone());
-                    existingUser.setAddress(updateDTO.address());
-
-                    // Solo un administrador debería poder cambiar el rol o el estado 'enabled'
-                    // existingUser.setRole(updateDTO.role());
-                    // existingUser.setEnabled(updateDTO.enabled());
+                    // Actualizar solo los campos que vienen en el DTO de actualización
+                    if (updateDTO.firstName() != null) existingUser.setFirstName(updateDTO.firstName());
+                    if (updateDTO.lastName() != null) existingUser.setLastName(updateDTO.lastName());
+                    if (updateDTO.phone() != null) existingUser.setPhone(updateDTO.phone());
+                    if (updateDTO.address() != null) existingUser.setAddress(updateDTO.address());
 
                     User updatedUser = userRepository.save(existingUser);
                     return mapToResponseDTO(updatedUser);
@@ -85,8 +86,6 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() ->
                         new UsernameNotFoundException("No se encontró un usuario con el email: " + email));
     }
-
-    // --- El resto de los métodos están muy bien y no necesitan cambios ---
 
     @Override
     @Transactional(readOnly = true)
@@ -112,6 +111,7 @@ public class UserServiceImpl implements UserService {
         return false;
     }
 
+    // Este método de mapeo es una excelente práctica para no repetir código.
     private UserResponseDTO mapToResponseDTO(User user) {
         return new UserResponseDTO(
                 user.getId(),

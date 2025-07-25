@@ -37,3 +37,11 @@ INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, ty
 -- Banner 4: Un banner que se activará en el futuro.
 INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, type, start_date, end_date, sort_order, created_at) VALUES
     ('Próximamente: Black Friday', 'Prepárate para las mejores ofertas del año', 'https://img.freepik.com/vector-premium/diseno-banner-plantilla-tienda-electrodomesticos_958026-97.jpg', '/', 'Más Información', true, 'PROMOTION', '2024-11-20 00:00:00', '2026-11-29 23:59:59', 4, NOW());
+
+-- Banner 4: Un banner que se activará en el futuro.
+INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, type, start_date, end_date, sort_order, created_at) VALUES
+    ('Próximamente: Black Friday', 'Prepárate para las mejores ofertas del año', 'https://i.postimg.cc/jjQFhyWB/Captura-de-pantalla-2025-07-25-172624.png', '/', 'Más Información', true, 'PROMOTION', '2024-11-20 00:00:00', '2026-11-29 23:59:59', 5, NOW());
+
+-- Banner 1: Un banner principal que siempre está activo (sin fechas de inicio/fin).
+INSERT INTO banners (title, subtitle, image_url, link_url, link_text, active, type, sort_order, created_at) VALUES
+    ('Bienvenido a CreaMuebles', 'Diseño y calidad que transforman tu hogar', 'https://cdn.jsdelivr.net/gh/jeison0894/OfertasPromociones_2025/assets/banner_desk.jpg', '/products', 'Ver Productos', true, 'MAIN', 1, NOW());
