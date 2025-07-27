@@ -45,7 +45,6 @@ public class User implements UserDetails {
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    // --- NUEVOS CAMPOS ---
     @NotBlank(message = "El tipo de documento es obligatorio")
     @Column(name = "document_type", nullable = false, length = 10)
     private String documentType;
@@ -54,7 +53,6 @@ public class User implements UserDetails {
     @Size(min = 5, max = 20)
     @Column(name = "document_number", nullable = false, unique = true, length = 20)
     private String documentNumber;
-    // --- FIN DE NUEVOS CAMPOS ---
 
     @NotBlank(message = "La contraseña es obligatoria")
     @Column(name = "password", nullable = false)
