@@ -49,9 +49,10 @@ El proyecto sigue una arquitectura de capas basada en Spring Boot:
 | **Spring Security** | 6.x | Seguridad y autenticación |
 | **Spring Data JPA** | 3.x | Persistencia de datos |
 | **JWT** | - | Autenticación stateless |
+| **OAuth2** | - | Autenticación con Google |
+| **reCAPTCHA v2** | - | Protección anti-bot |
 | **Thymeleaf** | 3.x | Motor de plantillas |
 | **MySQL** | 8.0+ | Base de datos (producción) |
-| **H2** | 2.x | Base de datos (desarrollo) |
 | **Maven** | 3.8+ | Gestión de dependencias |
 
 ## 📁 Estructura del Proyecto
@@ -67,34 +68,58 @@ src/main/java/edu/sena/creamuebles/
 │   ├── UserController.java       # Gestión de usuarios
 │   └── view/                     # Controladores para vistas Thymeleaf
 ├── 📦 dto/                  # Data Transfer Objects
+│   ├── BannerRequestDTO.java     # DTO para banners
+│   ├── BannerResponseDTO.java    # DTO respuesta banners
 │   ├── ProductRequestDTO.java    # DTO para productos
+│   ├── ProductResponseDTO.java   # DTO respuesta productos
 │   ├── CartItemDTO.java          # DTO para items del carrito
-│   └── ...                       # Otros DTOs
+│   ├── CartItemRequestDTO.java   # DTO request carrito
+│   ├── CartItemResponseDTO.java  # DTO response carrito
+│   ├── CartResponseDTO.java      # DTO respuesta carrito
+│   ├── CategoryRequestDTO.java   # DTO para categorías
+│   ├── CategoryResponseDTO.java  # DTO respuesta categorías
+│   ├── LoginRequestDTO.java      # DTO para login
+│   ├── LoginResponseDTO.java     # DTO respuesta login
+│   ├── UserRegistrationDTO.java  # DTO registro usuarios
+│   ├── UserResponseDTO.java      # DTO respuesta usuarios
+│   ├── UserUpdateDTO.java        # DTO actualización usuarios
+│   └── RecaptchaResponse.java    # DTO para reCAPTCHA
 ├── 🗃️ model/                # Entidades JPA
 │   ├── User.java                 # Entidad usuario
 │   ├── Product.java              # Entidad producto
 │   ├── Category.java             # Entidad categoría
 │   ├── Cart.java                 # Entidad carrito
-│   └── ...                       # Otras entidades
+│   ├── CartItem.java             # Entidad item del carrito
+│   └── Banner.java               # Entidad banner
 ├── 🔧 config/               # Configuración
 │   ├── SecurityConfig.java       # Configuración de seguridad
 │   ├── JwtAuthenticationFilter.java # Filtro JWT
 │   ├── PasswordConfig.java       # Configuración de contraseñas
 │   └── WebConfig.java            # Configuración web
 ├── 🗄️ repository/           # Repositorios JPA
-│   ├── UserRepository.java       # Repositorio de usuarios
+│   ├── BannerRepository.java     # Repositorio de banners
+│   ├── CartItemRepository.java   # Repositorio items carrito
+│   ├── CartRepository.java       # Repositorio de carrito
+│   ├── CategoryRepository.java   # Repositorio de categorías
 │   ├── ProductRepository.java    # Repositorio de productos
-│   └── ...                       # Otros repositorios
+│   └── UserRepository.java       # Repositorio de usuarios
 ├── 🔐 security/             # Componentes de seguridad
 │   └── OAuth2AuthenticationSuccessHandler.java
 ├── ⚙️ service/              # Interfaces de servicios
-│   ├── ProductService.java       # Servicio de productos
+│   ├── BannerService.java        # Servicio de banners
+│   ├── CaptchaService.java       # Servicio reCAPTCHA
 │   ├── CartService.java          # Servicio de carrito
+│   ├── CategoryService.java      # Servicio de categorías
 │   ├── JwtService.java           # Servicio JWT
+│   ├── ProductService.java       # Servicio de productos
+│   ├── RecaptchaService.java     # Servicio reCAPTCHA v2
+│   ├── UserService.java          # Servicio de usuarios
 │   └── impl/                     # Implementaciones
-│       ├── ProductServiceImpl.java
+│       ├── BannerServiceImpl.java
 │       ├── CartServiceImpl.java
-│       └── ...
+│       ├── CategoryServiceImpl.java
+│       ├── ProductServiceImpl.java
+│       └── UserServiceImpl.java
 └── 🚀 CreamueblesApplication.java # Clase principal
 ```
 
@@ -116,13 +141,23 @@ cd MiProyectoDeMuebles
 
 ### 2. Configurar la base de datos
 
-#### Para desarrollo (H2 - en memoria):
+#### Para desarrollo (MySQL local):
 ```properties
 # application-dev.properties
-spring.datasource.url=jdbc:h2:mem:testdb
-spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.url=jdbc:mysql://localhost:3306/creamuebles_db?serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=1234
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.jpa.hibernate.ddl-auto=create-drop
-spring.h2.console.enabled=true
+spring.jpa.show-sql=true
+
+# OAuth2 Google
+spring.security.oauth2.client.registration.google.client-id=tu_google_client_id
+spring.security.oauth2.client.registration.google.client-secret=tu_google_client_secret
+spring.security.oauth2.client.registration.google.scope=openid,profile,email
+
+# reCAPTCHA v2
+recaptcha.secret.key=tu_recaptcha_secret_key
 ```
 
 #### Para producción (MySQL):
@@ -140,13 +175,19 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
 
 ```bash
 # Variables JWT
-export JWT_SECRET_KEY=tu_clave_secreta_muy_larga_y_segura
-export JWT_EXPIRATION_TIME=86400000
+export JWT_SECRET=NThhODg3ZmM2YjM3YjE3MjE5YjM5M2Y2YjM5M2Y2YjM5M2Y2YjM5M2Y2YjM5M2Y2YjM5M2Y2YjM5M2Y2YjM5M2Y=
 
 # Variables de base de datos
-export DB_URL=jdbc:mysql://localhost:3306/creamuebles
-export DB_USERNAME=tu_usuario
-export DB_PASSWORD=tu_contraseña
+export DB_URL=jdbc:mysql://localhost:3306/creamuebles_db
+export DB_USERNAME=root
+export DB_PASSWORD=
+
+# Variables OAuth2 Google
+export GOOGLE_CLIENT_ID=tu_google_client_id
+export GOOGLE_CLIENT_SECRET=tu_google_client_secret
+
+# Variables reCAPTCHA
+export RECAPTCHA_SECRET_KEY=tu_recaptcha_secret_key
 ```
 
 ### 4. Ejecutar el proyecto
@@ -165,33 +206,60 @@ La aplicación estará disponible en: `http://localhost:8080`
 
 ## 🔐 Sistema de Autenticación
 
-El proyecto implementa autenticación mediante **JWT (JSON Web Tokens)** con las siguientes características:
+El proyecto implementa múltiples métodos de autenticación:
 
-### Endpoints de autenticación:
+### 🔑 Autenticación JWT
+Autenticación tradicional mediante **JSON Web Tokens**:
+
+#### Endpoints de autenticación:
 - `POST /api/auth/register` - Registro de usuarios
 - `POST /api/auth/login` - Inicio de sesión
 - `POST /api/auth/refresh` - Renovar token
 - `POST /api/auth/logout` - Cerrar sesión
 
-### Uso del token:
+#### Uso del token:
 ```bash
 # Incluir en el header de las peticiones
 Authorization: Bearer <tu_jwt_token>
 ```
 
-### Configuración de seguridad:
-- Tokens expiran en 24 horas por defecto
-- Soporte para OAuth2 (Google, Facebook)
+### 🌐 OAuth2 con Google
+Permite a los usuarios autenticarse usando su cuenta de Google:
+
+#### Configuración:
+1. Crear proyecto en [Google Cloud Console](https://console.cloud.google.com/)
+2. Habilitar Google+ API
+3. Configurar OAuth 2.0 credentials
+4. Agregar las credenciales al `application.properties`
+
+#### Endpoints OAuth2:
+- `GET /oauth2/authorization/google` - Iniciar flujo OAuth2
+- `GET /login/oauth2/code/google` - Callback de Google
+
+### 🤖 Protección reCAPTCHA v2
+Implementa Google reCAPTCHA v2 para prevenir ataques automatizados:
+
+#### Configuración:
+1. Registrar sitio en [Google reCAPTCHA](https://www.google.com/recaptcha/)
+2. Obtener Site Key y Secret Key
+3. Configurar en `application.properties`
+
+### Características de seguridad:
+- Tokens JWT expiran en 24 horas por defecto
 - Encriptación de contraseñas con BCrypt
 - Filtros personalizados para validación JWT
+- Protección CSRF habilitada
+- Validación reCAPTCHA en formularios críticos
 
 ## 📦 Funcionalidades Principales
 
 ### 🔑 Gestión de Usuarios
-- ✅ Registro e inicio de sesión
+- ✅ Registro e inicio de sesión tradicional
+- ✅ Autenticación OAuth2 con Google
 - ✅ Perfiles de usuario
 - ✅ Roles y permisos
 - ✅ Recuperación de contraseña
+- ✅ Protección reCAPTCHA v2
 
 ### 🪑 Gestión de Productos
 - ✅ CRUD completo de productos
@@ -217,6 +285,38 @@ Authorization: Bearer <tu_jwt_token>
 - ✅ Reportes de usuarios
 
 ## 🔍 Documentación de API
+
+### Autenticación
+
+#### Registro de usuario
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "username": "usuario123",
+  "email": "usuario@ejemplo.com",
+  "password": "contraseña123",
+  "recaptchaToken": "token_recaptcha"
+}
+```
+
+#### Login tradicional
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "usuario123",
+  "password": "contraseña123",
+  "recaptchaToken": "token_recaptcha"
+}
+```
+
+#### Login con Google OAuth2
+```http
+GET /oauth2/authorization/google
+```
 
 ### Productos
 
@@ -386,12 +486,16 @@ Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE)
 
 ### 📈 Roadmap
 
-- [ ] Implementar sistema de pagos
-- [ ] Agregar notificaciones en tiempo real
-- [ ] Implementar sistema de reviews
-- [ ] Agregar soporte para múltiples idiomas
+- [ ] Implementar sistema de pagos (Stripe/PayPal)
+- [ ] Agregar notificaciones en tiempo real (WebSocket)
+- [ ] Implementar sistema de reviews y calificaciones
+- [ ] Agregar soporte para múltiples idiomas (i18n)
 - [ ] Implementar caché con Redis
 - [ ] Agregar documentación con Swagger/OpenAPI
+- [ ] Sistema de cupones y descuentos
+- [ ] Integración con servicios de envío
+- [ ] Dashboard de analytics avanzado
+- [ ] Sistema de wishlist/favoritos
 
 ---
 
