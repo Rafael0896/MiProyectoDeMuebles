@@ -1,9 +1,12 @@
 package edu.sena.creamuebles.config;
 
+import edu.sena.creamuebles.security.OAuth2AuthenticationSuccessHandler;
+import edu.sena.creamuebles.service.JwtService;
 import edu.sena.creamuebles.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -12,35 +15,38 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    // --- BEANS COMUNES (Usados por ambas cadenas de seguridad) ---
+    // REMOVIDO: private final JwtAuthenticationFilter jwtAuthFilter;
+    private final UserService userService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+    private final JwtService jwtService; // Añadido para crear el filtro
+
+    // --- BEANS DE CONFIGURACIÓN ---
+    // PasswordEncoder movido a PasswordConfig para evitar dependencia circular
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider(UserService userService) {
+    public AuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userService);
-        authProvider.setPasswordEncoder(passwordEncoder());
+        authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
     }
 
@@ -49,69 +55,62 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    // NUEVO: Bean para el filtro JWT - esto rompe la dependencia circular
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtService, userService);
+    }
+
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // Aplicar a todas las rutas de la API
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 
-
-    // --- CADENA DE SEGURIDAD #1: PARA LA API STATELESS (REACT) ---
+    // --- CADENA DE SEGURIDAD ---
 
     @Bean
-    @Order(1) // Esta cadena tiene prioridad para las rutas que coincidan
-    public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthFilter, AuthenticationProvider authenticationProvider) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authProvider) throws Exception {
         http
-                .securityMatcher("/api/**") // SOLO aplicar esta configuración a rutas que empiecen con /api/
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable()) // Deshabilitamos CSRF para la API stateless
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .authenticationProvider(authProvider)
+                // CAMBIADO: Usar el bean del filtro en lugar de inyección directa
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado")
+                        )
+                )
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**", "/api/v1/categories/**", "/api/v1/banners/**").permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/login/oauth2/**",
+                                "/oauth2/**"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/products/**",
+                                "/api/v1/categories/**",
+                                "/api/v1/banners/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Sesión sin estado
-                .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // Añadimos el filtro JWT
 
-        return http.build();
-    }
-
-
-    // --- CADENA DE SEGURIDAD #2: PARA LA APLICACIÓN WEB STATEFUL (THYMELEAF) ---
-
-    @Bean
-    @Order(2) // Esta cadena se aplica al resto de las peticiones
-    public SecurityFilterChain webSecurityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider) throws Exception {
-        http
-                .authorizeHttpRequests(auth -> auth
-                        // Vistas y recursos públicos
-                        .requestMatchers("/", "/home", "/register", "/login", "/products", "/products/**").permitAll()
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
-                        .requestMatchers("/cart/**").permitAll()
-                        // El resto requiere autenticación
-                        .anyRequest().authenticated()
-                )
-                // Usamos el formLogin tradicional para la parte web
-                .formLogin(form -> form
-                        .loginPage("/login")
-                        .loginProcessingUrl("/login")
-                        .defaultSuccessUrl("/products", true)
-                        .permitAll()
-                )
-                .logout(logout -> logout
-                        .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login?logout")
-                        .permitAll()
-                )
-                .authenticationProvider(authenticationProvider);
-        // ¡OJO! No añadimos el filtro JWT aquí
+                .oauth2Login(oauth2 -> oauth2
+                        .redirectionEndpoint(redirection ->
+                                redirection.baseUri("/login/oauth2/code/*")
+                        )
+                        .successHandler(oAuth2SuccessHandler)
+                );
 
         return http.build();
     }

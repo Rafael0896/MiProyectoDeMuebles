@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,6 +17,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+// --- MEJORAS CON LOMBOK ---
+@Data // Genera todos los getters, setters, toString, equals y hashCode.
+@Builder // Implementa el patrón de diseño Builder, muy útil para crear objetos.
+@NoArgsConstructor // Genera un constructor vacío (requerido por JPA).
+@AllArgsConstructor // Genera un constructor con todos los campos.
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
@@ -22,12 +31,12 @@ public class User implements UserDetails {
     private Long id;
 
     @NotBlank(message = "El nombre es obligatorio")
-    @Size(min = 2, max = 50, message = "El nombre debe tener entre 2 y 50 caracteres")
+    @Size(min = 2, max = 50)
     @Column(name = "first_name", nullable = false, length = 50)
     private String firstName;
 
     @NotBlank(message = "El apellido es obligatorio")
-    @Size(min = 2, max = 50, message = "El apellido debe tener entre 2 y 50 caracteres")
+    @Size(min = 2, max = 50)
     @Column(name = "last_name", nullable = false, length = 50)
     private String lastName;
 
@@ -36,13 +45,21 @@ public class User implements UserDetails {
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
+    @NotBlank(message = "El tipo de documento es obligatorio")
+    @Column(name = "document_type", nullable = false, length = 10)
+    private String documentType;
+
+    @NotBlank(message = "El número de documento es obligatorio")
+    @Size(min = 5, max = 20)
+    @Column(name = "document_number", nullable = false, unique = true, length = 20)
+    private String documentNumber;
+
     @NotBlank(message = "La contraseña es obligatoria")
-    @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
     @Column(name = "password", nullable = false)
     private String password;
 
     @Column(name = "phone", length = 20)
-    private String phone;
+    private String phone; // Este es tu campo "celular"
 
     @Column(name = "address", length = 200)
     private String address;
@@ -78,17 +95,7 @@ public class User implements UserDetails {
         updatedAt = LocalDateTime.now();
     }
 
-    // Constructores
-    public User() {}
-
-    public User(String firstName, String lastName, String email, String password) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.email = email;
-        this.password = password;
-    }
-
-    // Métodos de UserDetails
+    // --- MÉTODOS DE USERDETAILS ---
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -96,7 +103,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return email; // Spring Security usará el email como nombre de usuario
     }
 
     @Override
@@ -119,90 +126,8 @@ public class User implements UserDetails {
         return enabled;
     }
 
-    // Getters y Setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public List<Cart> getCarts() {
-        return carts;
-    }
-
-    public void setCarts(List<Cart> carts) {
-        this.carts = carts;
-    }
+    // ¡Ya no necesitas escribir los Getters, Setters y Constructores!
+    // Lombok los genera por ti en tiempo de compilación.
 
     public String getFullName() {
         return firstName + " " + lastName;
